@@ -1,3 +1,6 @@
+/**
+ * @see: https://solanacookbook.com/references/local-development.html
+ */
 import {
 	Connection,
 	clusterApiUrl,
@@ -8,61 +11,66 @@ import {
 	sendAndConfirmTransaction,
 	LAMPORTS_PER_SOL
 } from '@solana/web3.js';
-import { findAssociatedTokenAddress } from "./ata";
-const store = require('../../../mykey.json');
+import * as bip39 from "bip39";
+import nacl from "tweetnacl";
+import { decodeUTF8 } from "tweetnacl-util";
 
-const key1 = Keypair.fromSecretKey(Uint8Array.from(store));
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+const wallet = Keypair.generate();
 
-(async function (){
-	// 4자리만큼 allocate한 다음에 값을 0으로 채웠다
-	const buffer = Buffer.alloc(4, 0);
-	// 리트랜디안, 비겐디안, 메모리가 바이트에 저장하는것에 대한 규칙
-  	buffer.writeUint32LE(0x44332201);
-  	// console.log(buffer);  // 01 22 33 44
-	// tx 안에 여러개의 instruction이 들어갈 수 있는데, 그래서 티엑스 한방 쏘면 인스트럭션들이 티엑스들이 여러개가 실행되는 것
-	const key1PubKey = key1.publicKey.toString();
-	console.log(key1PubKey);
-	
-	const txi = new TransactionInstruction({
-		// tx를 네트워크에 보낼 때에는 아래 3가지 Txinstruction이 필요하다
-		keys:[], 
-		data: buffer,
-		// solana address, 프로그램의 pubkey
-		programId: new PublicKey("DPbVsGyPJdkK6PMDJJh519R8r2YTnqw37mLCqE3GCYjb"),
-	});
-	// feepayer: tx 비용을 내는건데, pubkey로 한다
-	const tx = new Transaction().add(txi);
-	// 여러 키의 서명이 필요하다하면 저 어레이에 줄줄이 붙이면 된다
-	const sig = await sendAndConfirmTransaction(connection, tx, [key1]);
-	console.log(sig);
-
-	//* create a test wallet to listen to
-	const wallet = Keypair.generate();
-	// register a callback to listen to the wallet
+async function subscribeToWallet () {
 	connection.onAccountChange(
 		wallet.publicKey,
-		(updatedAccountInfo, context) => {console.log("Updated account info: ", updatedAccountInfo)},
-		"confirmed"
+		(updatedAccountInfo, context) => {
+			console.log(`Updated account info`, updatedAccountInfo),
+			"confirmed"
+		}
 	)
-	const airdropSigniture = await connection.requestAirdrop(
+};
+
+async function getTestSOL() {
+	const airdropSignature = await connection.requestAirdrop(
 		wallet.publicKey,
 		LAMPORTS_PER_SOL
-	)
+	);
+	await connection.confirmTransaction(airdropSignature);
+}
 
-	await connection.confirmTransaction(airdropSigniture);
-	console.log("Airdrop completed")
+
+(async() => {
+	await subscribeToWallet()
+	await getTestSOL()
+	//* How to check if a public key has an associated private key
+	const key = new PublicKey("5oNDL3swdJJF1g9DzJiZ4ynHXgszjAEpUkxVYejchzrY");
+	console.log(PublicKey.isOnCurve(key.toBytes()));
+
+	//* Generate a mnemonic phrase
+	// const mnemonic = bip39.generateMnemonic();
+	// console.log(`mnemonic`, mnemonic);
 	
+	//* Restore a keypair from a mnemonic phrase
+	const mnemonic = "mnemonic hawk book maid edge rose float basket silk machine wrong door believe";
+	const seed = bip39.mnemonicToSeedSync(mnemonic, "");
+	const keypair = Keypair.fromSeed(seed.slice(0, 32));
+	console.log(keypair.publicKey);
 
-	// const myPubKey = new PublicKey("FgVPHSDHWgYEBnKkm4oQSFhmcktU3yBHeLaaYR5gYSPp");
-    // const usdcPubkey = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-    // const ata = await findAssociatedTokenAddress(
-    //     myPubKey,
-    //     usdcPubkey
-    // )
-    // console.log(ata);
-
-})();
-
-// 월렛 연결하는 라이브러리는 키페어를 로컬에서 얻는게 아니라 연결된 팬텀에서 가져올 수 있는 메소드들이 있다. 센드트랜잭션 
+	//* How to sign and verify messages with wallets
+	const message = "The quick brown fox jumps over the lazy dog";
+	const messageBytes = decodeUTF8(message);
+	console.log(messageBytes);
+	//* Signing, hence secretkey
+	
+	/** 
+	 * @NACL Put stuff inside, turn the key and it's automagically signed and encrypted. Reverse direction works, too.
+	 * @note Signing, hence secretkey
+	 */
+	const signature = nacl.sign.detached(messageBytes, wallet.secretKey);
+	const isSigned = nacl.sign.detached.verify(
+		messageBytes,
+		signature,
+		wallet.publicKey.toBytes()
+	)
+	console.log("signed result:", isSigned);
+	
+})()
