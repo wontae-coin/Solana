@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/bbrick/Workspace/SOLANA/con1/target/debug/build/typenum-d7b4a03993edcdaa/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/bbrick/Workspace/SOLANA/con1/target/debug/build/typenum-d7b4a03993edcdaa/out/op.rs
