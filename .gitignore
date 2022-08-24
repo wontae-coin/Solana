@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-#* NodeJS gitignore
+# NodeJS gitignore
 # dependencies
 node_modules
 /.pnp
@@ -23,13 +23,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-#* SOLANA gitignore
+# SOLANA gitignore
 /farf/
 /solana-release/
 /solana-release.tar.bz2
 /solana-metrics/
 /solana-metrics.tar.bz2
-*/target/
+/debug/
+/target/
 /test-ledger/
 
 **/*.rs.bk
